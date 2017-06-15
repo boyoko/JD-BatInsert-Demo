@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 using DapperExtensions;
 using DapperExtensions.Sql;
 using JD.SDK;
+using JD.Common;
+using Topshelf;
+using System.IO;
+using Topshelf.Quartz;
+using Quartz;
 
 namespace JD.AutoRunService.SynchronousData
 {
@@ -16,22 +21,97 @@ namespace JD.AutoRunService.SynchronousData
     {
         static void Main(string[] args)
         {
-            //同步每个商品池中的SkuId
             try
             {
-                if (InsertToProductSku())
+                log4net.Config.XmlConfigurator.ConfigureAndWatch(new FileInfo(AppDomain.CurrentDomain.BaseDirectory + "log4net.config"));
+                
+                HostFactory.Run(c =>
                 {
-                    Console.WriteLine("同步商品池中的SkuId成功");
-                }
-                else
-                {
-                    Console.WriteLine("同步商品池中的SkuId失败！");
-                }
+                    c.UseLog4Net();
+
+                    c.Service<ServiceRunner>(s =>
+                    {
+                        s.ConstructUsing(name => new ServiceRunner());
+                        s.WhenStarted((service, control) => service.Start(null));
+                        s.WhenStopped((service, control) => service.Stop(null));
+
+                        //同步商品池和商品sku
+                        s.ScheduleQuartzJob<ServiceRunner>(q =>
+                            q.WithJob(() =>
+                                JobBuilder.Create<InsertToProductSkuDetailJob>().Build())
+                            .AddTrigger(() =>
+                                TriggerBuilder.Create()
+                                    .WithSimpleSchedule(builder => builder
+                                        .WithIntervalInHours(5)
+                                        .RepeatForever())
+                                    .Build())
+                            );
+
+                    });
+
+                });
+
+
+                //var a = service.Get(token).GetAwaiter().GetResult();
+
+                //var b = service.Del(token,1525817600).GetAwaiter().GetResult();
+
+                //var request = new SubmitOrderRequestDto
+                //{
+                //    token = token,
+                //    thirdOrder = "ABC0001",
+                //    sku = new List<SkuObject>
+                //    {
+                //        new SkuObject
+                //        {
+                //            skuId = 3153365,
+                //            num = 1,
+                //            bNeedAnnex = true,
+                //            bNeedGift = false,
+                //            //yanbao = new List<long> { 1618482 }
+                //        },
+                //    },
+
+                //    name = "hahah",
+                //    province = 1,  //北京
+                //    city = 2810, // 大兴区
+                //    county = 6501, //五环至六环之间
+                //    town = 0,
+                //    address = "中航技广场B座3层",
+                //    mobile = "13811931624",
+                //    email = "519364325@qq.com",
+                //    invoiceState = 2,
+                //    invoiceType = 1,
+                //    selectedInvoiceTitle = 5,
+                //    companyName = "门财科技",
+                //    invoiceContent = 22,
+                //    paymentType = 4,
+                //    isUseBalance = 1,
+                //    submitState = 1,
+                //    doOrderPriceMode = 1,
+                //    orderPriceSnap = new List<OrderPriceSnap>
+                //    {
+                //        new OrderPriceSnap
+                //        {
+                //            skuId = 3153365,
+                //            price = 7699.00M
+                //        }
+                //    },
+
+
+
+                //};
+
+                //var jsonRequest = StringHelper.ToJson(request);
+
+                //var result = service.SubmitOrder(request).GetAwaiter().GetResult();
+
             }
             catch (Exception e)
             {
                 throw e;
             }
+
 
             Console.Read();
 
@@ -39,270 +119,9 @@ namespace JD.AutoRunService.SynchronousData
 
 
 
-        private static List<ProductPool> GetProductPoolList()
-        {
-            var sw = new Stopwatch();
-            sw.Start();
-            using (var db = new JDProductContext())
-            {
-                var x = db.ProductPool.ToList();
-                sw.Stop();
-                Console.WriteLine("执行GetProductPoolList耗时：{0}毫秒。", sw.ElapsedMilliseconds);
-                return x;
-            }
-        }
+        
 
-        private static bool InsertToProductSku()
-        {
-            var sw = new Stopwatch();
-            sw.Start();
-
-            SynchronousDataService service = new SynchronousDataService();
-            var token = service.AccessToken().GetAwaiter().GetResult();
-            using (var db = new JDProductContext())
-            {
-                try
-                {
-                    List<ProductPool> list = GetProductPoolList();
-                    List<ProductSku> skus = new List<ProductSku>();
-                    Parallel.ForEach(list, (num) =>
-                    {
-                        Console.WriteLine("商品池编号:{0},商品池名称:{1}", num.PageNum, num.Name);
-                        var skustringArray = service.GetSku(token, num.PageNum.ToString()).GetAwaiter().GetResult();
-                        if (string.IsNullOrWhiteSpace(skustringArray))
-                        {
-                            Console.WriteLine("#######string.IsNullOrWhiteSpace(skustringArray)###########");
-                            return;
-                        }
-                        if (skustringArray.Contains(','))
-                        {
-                            var skuList = skustringArray.Split(',');
-                            //Console.WriteLine("商品池编号:{0}--商品池名称:{1}--有{2}个Sku", num.PageNum, num.Name, skuList.Count());
-                            long x = 0;
-
-                            if (skuList == null || !skuList.Any())
-                            {
-                                Console.WriteLine("*******************************************");
-                                Debug.Assert(true);
-                            }
-
-                            var tmp = (from c in skuList
-                                       select new ProductSku
-                                       {
-                                           ProductSkuId = Guid.NewGuid().ToString(),
-                                           ProductPoolId = num.ProductPoolId,
-                                           PageNum = num.PageNum,
-                                           SkuId = long.TryParse(c, out x) ? x : 0
-                                       }).ToList();
-
-                            if (tmp==null || !tmp.Any())
-                            {
-                                Console.WriteLine("----------------------------------------------------");
-                                Debug.Assert(true);
-                            }
-
-                            //var jsonStr = JsonConvert.SerializeObject(tmp);
-                            //Console.WriteLine("商品池编号:{0}--商品池名称:{1}--有{2}个Sku,序列化结果：{3}", num.PageNum, num.Name, skuList.Count(),jsonStr);
-                            //log.Info(jsonStr);
-                            skus.AddRange(tmp);
-
-                        }
-                        else
-                        {
-                            long x = 0;
-                            var flag = long.TryParse(skustringArray, out x);
-                            var tmp = new ProductSku
-                            {
-                                ProductSkuId = Guid.NewGuid().ToString(),
-                                ProductPoolId = num.ProductPoolId,
-                                PageNum = num.PageNum,
-                                SkuId = x,
-                            };
-
-                            if (tmp == null)
-                            {
-                                Console.WriteLine("=====================================================");
-                                Debug.Assert(true);
-                            }
-                            skus.Add(tmp);
-
-                            //var jsonStr = JsonConvert.SerializeObject(tmp);
-                            //Console.WriteLine("商品池编号:{0}--商品池名称:{1},序列化结果：{2}", num.PageNum, num.Name, jsonStr);
-                            //log.Info(jsonStr);
-                        }
-
-                    });
-
-                    sw.Stop();
-                    Console.WriteLine("执行InsertToProductSku-All耗时：{0}毫秒。", sw.ElapsedMilliseconds);
-
-                    var conn = db.Database.Connection;
-
-                    skus.RemoveAll(item=>item==null);
-                    InsertBatch<ProductSku>(conn, skus).GetAwaiter().GetResult();
-
-                }
-                catch (Exception ex)
-                {
-                    throw ex;
-                }
-
-                return true;
-
-            }
-
-        }
-
-
-        /// <summary>
-        /// 批量插入功能
-        /// </summary>
-        private static async Task InsertBatch(IDbConnection conn, IEnumerable<ProductSku> entityList, IDbTransaction transaction = null)
-        {
-            var watch = new System.Diagnostics.Stopwatch();
-            try
-            {
-                if (conn.State != ConnectionState.Open)
-                    conn.Open();
-                var tblName = string.Format("dbo.{0}", typeof(ProductSku).Name);
-
-                SqlTransaction tran = null;
-                if (transaction == null)
-                {
-                    tran = (SqlTransaction)conn.BeginTransaction();
-                }
-                else
-                {
-                    tran = (SqlTransaction)transaction;
-                }
-                //using (var bulkCopy = new SqlBulkCopy(conn as SqlConnection, SqlBulkCopyOptions.TableLock, tran))
-                using (var bulkCopy = new SqlBulkCopy(conn as SqlConnection, SqlBulkCopyOptions.KeepIdentity, tran))
-                {
-                    string sqlText = "delete  FROM [dbo].[ProductSku]";
-                    SqlCommand cmd = new SqlCommand(sqlText, conn as SqlConnection, tran);
-                    cmd.CommandTimeout = 300;
-                    cmd.ExecuteNonQuery();
-                    bulkCopy.BatchSize = entityList.Count();
-                    bulkCopy.DestinationTableName = tblName;
-                    DapperExtensions.Sql.ISqlGenerator sqlGenerator = new SqlGeneratorImpl(new DapperExtensionsConfiguration());
-                    var classMap = sqlGenerator.Configuration.GetMap<ProductSku>();
-                    var props = classMap.Properties.Where(x => x.Ignored == false).ToArray();
-                    foreach (var propertyInfo in props)
-                    {
-                        bulkCopy.ColumnMappings.Add(propertyInfo.Name, propertyInfo.Name);
-                    }
-
-                    watch.Start();
-                    bulkCopy.BulkCopyTimeout = 300;
-
-                    await bulkCopy.WriteToServerAsync(new DataTable());
-                    tran.Commit();
-                    watch.Stop();
-                    Console.WriteLine("执行WriteToServerAsync耗时：{0}毫秒。", watch.ElapsedMilliseconds);
-
-                }
-            }
-            catch (AggregateException e)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-
-        }
-
-
-        /// <summary>
-        /// 批量插入功能
-        /// </summary>
-        private static async Task InsertBatch<T>(IDbConnection conn, IEnumerable<T> entityList, IDbTransaction transaction = null) where T : class
-        {
-            var watch = new System.Diagnostics.Stopwatch();
-            try
-            {
-                if (conn.State != ConnectionState.Open)
-                    conn.Open();
-                var tblName = string.Format("dbo.{0}", typeof(T).Name);
-                SqlTransaction tran = null;
-                if (transaction == null)
-                {
-                    tran = (SqlTransaction)conn.BeginTransaction();
-                }
-                else
-                {
-                    tran = (SqlTransaction)transaction;
-                }
-                //using (var bulkCopy = new SqlBulkCopy(conn as SqlConnection, SqlBulkCopyOptions.TableLock, tran))
-                using (var bulkCopy = new SqlBulkCopy(conn as SqlConnection, SqlBulkCopyOptions.KeepIdentity, tran))
-                {
-                    string sqlText =string.Format("delete  FROM [dbo].{0}", tblName);
-                    SqlCommand cmd = new SqlCommand(sqlText, conn as SqlConnection, tran);
-                    cmd.CommandTimeout = 300;
-                    cmd.ExecuteNonQuery();
-                    bulkCopy.BatchSize = entityList.Count();
-                    bulkCopy.DestinationTableName = tblName;
-                    var table = new DataTable();
-                    DapperExtensions.Sql.ISqlGenerator sqlGenerator = new SqlGeneratorImpl(new DapperExtensionsConfiguration());
-                    var classMap = sqlGenerator.Configuration.GetMap<T>();
-                    var props = classMap.Properties.Where(x => x.Ignored == false).ToArray();
-                    foreach (var propertyInfo in props)
-                    {
-                        bulkCopy.ColumnMappings.Add(propertyInfo.Name, propertyInfo.Name);
-                        table.Columns.Add(propertyInfo.Name, Nullable.GetUnderlyingType(propertyInfo.PropertyInfo.PropertyType) ?? propertyInfo.PropertyInfo.PropertyType);
-                    }
-                    var values = new object[props.Count()];
-                    watch.Start();
-
-                    foreach (var itemm in entityList)
-                    {
-                        if(itemm == null)
-                        {
-                            continue;
-                        }
-                        for (var i = 0; i < values.Length; i++)
-                        {
-                            try
-                            {
-                                values[i] = props[i].PropertyInfo.GetValue(itemm, null);
-                            }
-                            catch
-                            {
-                                Debug.Assert(true);
-                            }
-                        }
-
-                        try
-                        {
-                            table.Rows.Add(values);
-                        }
-                        catch
-                        {
-                            Debug.Assert(true);
-                        }
-
-
-                    }
-                    
-                    bulkCopy.BulkCopyTimeout = 300;
-                    await bulkCopy.WriteToServerAsync(table);
-                    tran.Commit();
-                    watch.Stop();
-                    Console.WriteLine("执行WriteToServerAsync耗时：{0}毫秒。", watch.ElapsedMilliseconds);
-
-                }
-            }
-            catch (AggregateException e)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-
-        }
+        
 
 
     }

@@ -6,27 +6,30 @@ using System.Threading.Tasks;
 
 namespace JD.SDK
 {
-    public class GetCategorysRequestDto
+    public class CheckAreaRequestDto
     {
         /// <summary>
         /// 必须 授权时获取的access token
         /// </summary>
         public string token { get; set; }
         /// <summary>
-        /// 必须 页号，从1开始
+        /// 必须 一级地址
         /// </summary>
-        public int pageNo { get; set; }
+        public int provinceId { get; set; }
+
         /// <summary>
-        /// 必须 页大小，最大值5000
+        /// 必须 二级地址
         /// </summary>
-        public int pageSize { get; set; }
+        public int cityId { get; set; }
+
         /// <summary>
-        /// 非必须 父ID
+        /// 必须 三级地址，如果是空请传入0
         /// </summary>
-        public int parentId { get; set; }
+        public int countyId { get; set; }
+
         /// <summary>
-        /// 非必须 分类等级（0:一级； 1:二级；2：三级）
+        /// 必须 四级地址，如果是空请传入0
         /// </summary>
-        public int catClass { get; set; }
+        public int townId { get; set; }
     }
 }

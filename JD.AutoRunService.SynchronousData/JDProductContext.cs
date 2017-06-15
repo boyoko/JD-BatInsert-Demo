@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity;
+using System.Data.Entity.Core.Metadata.Edm;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -40,6 +42,7 @@ namespace JD.AutoRunService.SynchronousData
         public string ProductPoolId { get; set; }
         public string Name { get; set; }
         public int PageNum { get; set; }
+        public DateTime CreateTime { get; set; }
     }
 
     public class ProductSku
@@ -49,6 +52,7 @@ namespace JD.AutoRunService.SynchronousData
         public string ProductPoolId { get; set; }
         public int PageNum { get; set; }
         public long SkuId { get; set; }
+        public DateTime CreateTime { get; set; }
     }
 
     public class ProductDetail
@@ -119,6 +123,8 @@ namespace JD.AutoRunService.SynchronousData
         /// 京东自营礼品卡， 只有当sku为京东自营实物礼品卡的时候才有该字段
         /// </summary>
         public int EleGift { get; set; }
+
+        public DateTime CreateTime { get; set; }
     }
 
 

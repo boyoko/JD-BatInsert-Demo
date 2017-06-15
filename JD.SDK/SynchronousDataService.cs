@@ -5,19 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JD.Common;
+using System.Xml.Linq;
 
 namespace JD.SDK
 {
     public class SynchronousDataService
     {
-        private string GetMethodName(string message = "",
-        [System.Runtime.CompilerServices.CallerMemberName] string memberName = "",
-        [System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "",
-        [System.Runtime.CompilerServices.CallerLineNumber] int sourceLineNumber = 0)
-        {
-            //Console.WriteLine(memberName);
-            return memberName;
-        }
         /// <summary>
         /// 1.3 获取Access Token
         /// </summary>
@@ -56,7 +49,10 @@ namespace JD.SDK
                 dic.Add("scope", scope);
                 dic.Add("sign", sign);
                 var x = await HttpHelper.HttpClientPost(url, dic);
-
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var tokenResult = StringHelper.JsonToObj<BaseResult<TokenResult>>(x)
                     as BaseResult<TokenResult>;
 
@@ -126,6 +122,10 @@ namespace JD.SDK
                 IDictionary<string, string> dic = new SortedDictionary<string, string>();
                 dic.Add("token", token);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var result = ConvertJsonToResult<List<PageNumResult>>(x);
                 return result;
             }
@@ -184,6 +184,10 @@ namespace JD.SDK
                 dic.Add("pageNum", pageNum);
                 dic.Add("pageNo", pageNo);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return x;
+                }
                 var result = ConvertJsonToResult<string>(x);
                 return result;
             }
@@ -209,6 +213,10 @@ namespace JD.SDK
                 dic.Add("sku", sku);
                 dic.Add("isShow", isShow.ToString());
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var result = ConvertJsonToResult<ProductDetailResult>(x);
                 return result;
             }
@@ -232,6 +240,10 @@ namespace JD.SDK
                 dic.Add("token", token);
                 dic.Add("sku", skuIds);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var result = ConvertJsonToResult<List<SkuStateResult>>(x);
                 return result;
             }
@@ -256,6 +268,10 @@ namespace JD.SDK
                 dic.Add("token", token);
                 dic.Add("sku", skuIds);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 /*
                  {"success":true,"resultMessage":"","resultCode":"0000","result":{
                     "3670994":[
@@ -289,7 +305,7 @@ namespace JD.SDK
         /// <param name="token">授权时获取的access token</param>
         /// <param name="skuIds">商品编号，支持批量，以，分隔  (最高支持50个商品)</param>
         /// <returns></returns>
-        public async virtual Task<List<GetCommentSummarysResult>> GetCommentSummarys(string token, string skuIds)
+        public async virtual Task<List<CommentSummarysResult>> GetCommentSummarys(string token, string skuIds)
         {
             try
             {
@@ -298,7 +314,238 @@ namespace JD.SDK
                 dic.Add("token", token);
                 dic.Add("sku", skuIds);
                 var x = await HttpHelper.HttpClientPost(url, dic);
-                var result = ConvertJsonToResult<List<GetCommentSummarysResult>>(x);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<CommentSummarysResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 3.8 商品区域购买限制查询
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<List<CheckAreaLimitResult>> CheckAreaLimit(CheckAreaLimitRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CHECKAREALIMIT_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                if(request.skuIds != null && request.skuIds.Any())
+                {
+                    var str = string.Join(",", request.skuIds);
+                    dic.Add("skuIds", str);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.skuIds));
+                }
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+
+                var result = ConvertJsonToResult<List<CheckAreaLimitResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 3.9 商品区域是否支持货到付款
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<bool> GetIsCod(IsCodRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETISCOD_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                if (request.skuIds != null && request.skuIds.Any())
+                {
+                    var str = string.Join(",", request.skuIds);
+                    dic.Add("skuIds", str);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.skuIds));
+                }
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+
+                var result = ConvertJsonToResult<bool>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 3.10 查询赠品信息接口
+        /// 购买数量大于赠品要求最多购买数量，不加赠品
+        ///购买数量小于赠品要求最少购买数量，不加赠品
+        ///下单时间不在促销时间范围内，不加赠品
+        ///需要计算赠品量的倍数 = 主商品 / 促销要求主商品最少数（minNum为0时，赠品数量倍数为主商品数量）
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<SkuGiftResult> GetSkuGift(SkuGiftRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETSKUGIFT_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("skuId", request.skuId.ToString());
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+
+                var result = ConvertJsonToResult<SkuGiftResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 3.11 运费查询接口
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<FreightResult> GetFreight(FreightRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETSKUGIFT_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                if(request.sku!=null && request.sku.Any())
+                {
+                    var jsonStr = StringHelper.ToJson(request.sku);
+                    dic.Add("sku", jsonStr);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.sku));
+                }
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+                dic.Add("paymentType", request.paymentType.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+
+                var result = ConvertJsonToResult<FreightResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        
+        //3.12 商品搜索接口 暂时没有对接，不打算使用京东的搜索接口，要使用自己的搜索接口
+
+        /// <summary>
+        /// 3.13 商品可售验证接口
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="skuIds">商品编号，支持批量，以,分隔  (最高支持100个商品)</param>
+        /// <returns></returns>
+        public async virtual Task<List<CheckResult>> Check(string token, string skuIds)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETCOMMENTSUMMARYS_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("skuIds", skuIds);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<CheckResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 3.14 查询商品延保接口
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<Dictionary<long,YanbaoSkuResult>> GetYanbaoSku(YanbaoSkuRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETYANBAOSKU_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                if (request.skuIds != null && request.skuIds.Any())
+                {
+                    var jsonStr = StringHelper.ToJson(request.skuIds);
+                    dic.Add("skuIds", jsonStr);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.skuIds));
+                }
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+
+                var result = ConvertJsonToResult<Dictionary<long, YanbaoSkuResult>>(x);
                 return result;
             }
             catch (Exception e)
@@ -321,6 +568,10 @@ namespace JD.SDK
                 dic.Add("token", token);
                 dic.Add("cid", cid);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var result = ConvertJsonToResult<CategoryResult>(x);
                 return result;
             }
@@ -334,7 +585,7 @@ namespace JD.SDK
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async virtual Task<CategorysResult> GetCategorys(GetCategorysRequestDto request)
+        public async virtual Task<CategorysResult> GetCategorys(CategorysRequestDto request)
         {
             try
             {
@@ -346,6 +597,10 @@ namespace JD.SDK
                 dic.Add("parentId", request.parentId.ToString());
                 dic.Add("catClass", request.catClass.ToString());
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 /*
                  {"success":true,"resultMessage":"","resultCode":"0000","result":{"categorys":
                     [
@@ -380,6 +635,10 @@ namespace JD.SDK
                 dic.Add("token", token);
                 dic.Add("skuId", skuId);
                 var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
                 var result = ConvertJsonToResult<List<SimilarProduct>>(x);
                 return result;
             }
@@ -389,6 +648,938 @@ namespace JD.SDK
             }
         }
 
+        /// <summary>
+        /// 4.1 获取一级地址
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <returns></returns>
+        public async virtual Task<ProvinceResult> GetProvince(string token)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETPROVINCE_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<ProvinceResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 4.2 获取二级地址
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="provinceId">必须	一级地址</param>
+        /// <returns></returns>
+        public async virtual Task<CityResult> GetCity(string token,int provinceId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETCITY_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("id", provinceId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CityResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 4.3 获取三级地址
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="cityId">必须	二级地址</param>
+        /// <returns></returns>
+        public async virtual Task<CountyResult> GetCounty(string token, int cityId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETCOUNTY_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("id", cityId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CountyResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 4.4 获取四级地址
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="countyId">必须	三级地址</param>
+        /// <returns></returns>
+        public async virtual Task<TownResult> GetTown(string token, int countyId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETTOWN_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("id", countyId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<TownResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 4.5 验证四级地址是否正确
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<CheckAreaResult> CheckArea(CheckAreaRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CHECKAREA_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("provinceId", request.provinceId.ToString());
+                dic.Add("cityId", request.cityId.ToString());
+                dic.Add("countyId", request.countyId.ToString());
+                dic.Add("townId", request.townId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CheckAreaResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 5.1 批量查询京东价价格
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="skus">商品编号，请以，分割。例如：J_129408,J_129409(最高支持100个商品)</param>
+        /// <returns></returns>
+        public async virtual Task<List<JDPriceResult>> GetJdPrice(string token, string skus)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETJDPRICE_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("sku", skus);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<JDPriceResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 5.2 批量查询协议价价格
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="skus">商品编号，请以，分割。例如：J_129408,J_129409(最高支持100个商品)</param>
+        /// <returns></returns>
+        public async virtual Task<List<PriceResult>> GetPrice(string token, string skus)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETPRICE_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("sku", skus);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<PriceResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 5.3 批量查询商品售卖价
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="skus">商品编号，请以，分割。例如：J_129408,J_129409(最高支持100个商品)</param>
+        /// <returns></returns>
+        public async virtual Task<List<SellPriceResult>> GetSellPrice(string token, string skus)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETSELLPRICE_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("sku", skus);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<SellPriceResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 6.2 批量获取库存接口（建议订单详情页、下单使用）
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<List<NewStockByIdResult>> GetNewStockById(NewStockByIdRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETNEWSTOCKBYID_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("skuNums", StringHelper.ToJson(request.skuNums));
+                dic.Add("area", request.area);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<NewStockByIdResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 6.3 批量获取库存接口(建议商品列表页使用)
+        /// </summary>
+        /// <param name="token"> 授权时获取的access token</param>
+        /// <param name="sku">商品编号 批量以逗号分隔  (最高支持100个商品)</param>
+        /// <param name="area">格式：1_0_0 (分别代表1、2、3级地址)</param>
+        /// <returns></returns>
+        public async virtual Task<List<StockByIdResult>> GetStockById(string token,string sku, string area)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETSTOCKBYID_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("sku", sku);
+                dic.Add("area", area);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<StockByIdResult>>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.1 统一下单接口
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<SubmitOrderResult> SubmitOrder(SubmitOrderRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.SUBMITORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("thirdOrder", request.thirdOrder);
+                if(request.sku!= null && request.sku.Any())
+                {
+                    var skuJson = StringHelper.ToJson(request.sku);
+                    dic.Add("sku", skuJson);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.sku));
+                }
+                
+                dic.Add("name", request.name);
+                dic.Add("province", request.province.ToString());
+                dic.Add("city", request.city.ToString());
+                dic.Add("county", request.county.ToString());
+                dic.Add("town", request.town.ToString());
+                dic.Add("address", request.address);
+                dic.Add("zip", request.zip);
+                dic.Add("phone", request.phone);
+                dic.Add("mobile", request.mobile);
+                dic.Add("email", request.email);
+                dic.Add("remark", request.remark);
+                dic.Add("invoiceState", request.invoiceState.ToString());
+                dic.Add("invoiceType", request.invoiceType.ToString());
+                dic.Add("selectedInvoiceTitle", request.selectedInvoiceTitle.ToString());
+                dic.Add("companyName", request.companyName);
+                dic.Add("invoiceContent", request.invoiceContent.ToString());
+                dic.Add("paymentType", request.paymentType.ToString());
+                dic.Add("isUseBalance", request.isUseBalance.ToString());
+                dic.Add("submitState", request.submitState.ToString());
+                dic.Add("invoiceName", request.invoiceName);
+                dic.Add("invoicePhone", request.invoicePhone);
+                dic.Add("invoiceProvice", request.invoiceProvice.ToString());
+                dic.Add("invoiceCity", request.invoiceCity.ToString());
+                dic.Add("invoiceCounty", request.invoiceCounty.ToString());
+                dic.Add("invoiceAddress", request.invoiceAddress);
+                dic.Add("doOrderPriceMode", request.doOrderPriceMode.ToString());
+                if (request.orderPriceSnap != null && request.orderPriceSnap.Any())
+                {
+                    var orderPriceSnap = StringHelper.ToJson(request.orderPriceSnap);
+                    dic.Add("orderPriceSnap", orderPriceSnap);
+                }
+                else
+                {
+                    throw new ArgumentNullException(nameof(request.orderPriceSnap));
+                }
+                dic.Add("reservingDate", request.reservingDate.ToString());
+                dic.Add("installDate", request.installDate.ToString());
+                dic.Add("needInstall", request.needInstall.ToString());
+                dic.Add("promiseDate", request.promiseDate);
+                dic.Add("promiseTimeRange", request.promiseTimeRange);
+                dic.Add("promiseTimeRangeCode", request.promiseTimeRangeCode.ToString());
+
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<SubmitOrderResult>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.2 确认预占库存订单接口
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="jdOrderId">京东的订单单号(调用7.1接口时返回的父订单号)</param>
+        /// <returns></returns>
+        public async virtual Task<bool> ConfirmOrder(string token, string jdOrderId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CONFIRMORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("jdOrderId", jdOrderId);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+                var result = ConvertJsonToResult<bool>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.3 取消未确认订单接口
+        /// 注意事项
+        ///该接口仅能取消未确认的预占库存父订单单号。不能取消已经确认的订单单号。
+        ///如果需要取消已确认的订单，可以调用取消订单接口进行取消操作，参数必须为子订单才能取消 。
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="jdOrderId">京东的订单单号(调用7.1接口时返回的父订单号)</param>
+        /// <returns></returns>
+        public async virtual Task<bool> Cancel(string token, string jdOrderId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CANCEL_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("jdOrderId", jdOrderId);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+                var result = ConvertJsonToResult<bool>(x);
+                return result;
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.4 发起支付接口
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="jdOrderId">京东的订单单号(调用7.1接口时返回的父订单号)</param>
+        /// <returns></returns>
+        public async virtual Task<bool> DoPay(string token, string jdOrderId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.DOPAY_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("jdOrderId", jdOrderId);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+                var cc = StringHelper.GetValueByKeyFromJson("success", x);
+                if ((bool)cc)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+                
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.6 订单反查接口
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="thirdOrder">客户系统订单号</param>
+        /// <returns></returns>
+        public async virtual Task<string> SelectJdOrderIdByThirdOrder(string token, string thirdOrder)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.SELECTJDORDERIDBYTHIRDORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("thirdOrder", thirdOrder);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return x;
+                }
+                var result = ConvertJsonToResult<string>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.7 查询京东订单信息接口
+        /// </summary>
+        /// <param name="token"> 授权时获取的access token</param>
+        /// <param name="jdOrderId">京东订单号</param>
+        /// <returns></returns>
+        public async virtual Task<SelectJdOrderResult> SelectJdOrder(string token, string jdOrderId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.SELECTJDORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("jdOrderId", jdOrderId);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<SelectJdOrderResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.8 查询配送信息接口
+        /// </summary>
+        /// <param name="token"> 授权时获取的access token</param>
+        /// <param name="jdOrderId">京东订单号</param>
+        /// <returns></returns>
+        public async virtual Task<OrderTrackResult> OrderTrack(string token, string jdOrderId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.ORDERTRACK_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("jdOrderId", jdOrderId);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<OrderTrackResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.9 统一余额查询接口
+        /// </summary>
+        /// <param name="token">授权时获取的access token</param>
+        /// <param name="payType">支付类型 4：余额 7：网银钱包 101：金采支付</param>
+        /// <returns></returns>
+        public async virtual Task<decimal> GetBalance(string token, int payType)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.ORDERTRACK_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("payType", payType.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return 0m;
+                }
+                var result = ConvertJsonToResult<decimal>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 7.11 余额明细查询接口
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<BalanceDetailResult> GetBalanceDetail(BalanceDetailRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETBALANCEDETAIL_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("pageNum", request.pageNum.ToString());
+                dic.Add("pageSize", request.pageSize.ToString());
+                dic.Add("orderId", request.orderId);
+                dic.Add("startDate", request.startDate);
+                dic.Add("endDate", request.endDate);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<BalanceDetailResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 8.1 新建订单查询接口
+        /// </summary>
+        /// <param name="token">必须	授权时获取的access token</param>
+        /// <param name="date">必须	2013-11-7 （不包含当天）</param>
+        /// <param name="page">必须	当前页码</param>
+        /// <returns></returns>
+        public async virtual Task<CheckNewOrderResult> CheckNewOrder(string token,string date,int page)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CHECKNEWORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("date", date);
+                dic.Add("page", page.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CheckNewOrderResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 8.2 获取妥投订单接口
+        /// </summary>
+        /// <param name="token">必须	授权时获取的access token</param>
+        /// <param name="date">必须	2013-11-7 （不包含当天）</param>
+        /// <param name="page">必须	当前页码</param>
+        /// <returns></returns>
+        public async virtual Task<CheckDlokOrderResult> CheckDlokOrder(string token, string date, int page)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CHECKDLOKORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("date", date);
+                dic.Add("page", page.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CheckDlokOrderResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 8.3 获取拒收消息接口
+        /// </summary>
+        /// <param name="token">必须	授权时获取的access token</param>
+        /// <param name="date">必须	2013-11-7 （不包含当天）</param>
+        /// <param name="page">必须	当前页码</param>
+        /// <returns></returns>
+        public async virtual Task<CheckDlokOrderResult> CheckRefuseOrder(string token, string date, int page)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.CHECKREFUSEORDER_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("date", date);
+                dic.Add("page", page.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CheckDlokOrderResult>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+
+        /// <summary>
+        /// 9.1 信息推送接口
+        /// </summary>
+        /// <param name="token">必须	授权时获取的access token</param>
+        /// <param name="type">非必须	推送类型，支持多个组合，例如 1,2,3</param>
+        /// <returns></returns>
+        public async virtual Task<List<MessageResult>> Get(string token, string type="")
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GET_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("date", type);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<MessageResult>>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 9.2 根据推送id，删除推送信息接口
+        /// </summary>
+        /// <param name="token">必须	授权时获取的access token</param>
+        /// <param name="id">必须	上一接口获取的id</param>
+        /// <returns></returns>
+        public async virtual Task<bool> Del(string token, long id)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.DEL_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", token);
+                dic.Add("id", id.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+                var result = ConvertJsonToResult<bool>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.2 填写客户发运信息
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<dynamic> UpdateSendSku(UpdateSendSkuRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.UPDATESENDSKU_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("afsServiceId", request.afsServiceId.ToString());
+                dic.Add("freightMoney", request.freightMoney.ToString());
+                dic.Add("expressCompany", request.expressCompany);
+                dic.Add("deliverDate", request.deliverDate);
+                dic.Add("expressCode", request.expressCode);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<dynamic>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.3 校验某订单中某商品是否可以提交售后服务
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async virtual Task<int> GetAvailableNumberComp(GetAvailableNumberCompRequestDto request)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETAVAILABLENUMBERCOMP_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("token", request.token);
+                dic.Add("param", StringHelper.ToJson(request.param));
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return 0;
+                }
+                var result = ConvertJsonToResult<int>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.4 根据订单号、商品编号查询支持的服务类型
+        /// </summary>
+        /// <param name="jdOrderId">必需 订单号</param>
+        /// <param name="skuId">必需 商品编号</param>
+        /// <returns></returns>
+        public async virtual Task<List<ComponentExport>> GetCustomerExpectComp(long jdOrderId, long skuId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETCUSTOMEREXPECTCOMP_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("jdOrderId", jdOrderId.ToString());
+                dic.Add("skuId", skuId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<ComponentExport>>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.5 根据订单号、商品编号查询支持的商品返回京东方式
+        /// </summary>
+        /// <param name="jdOrderId">必需 订单号</param>
+        /// <param name="skuId">必需 商品编号</param>
+        /// <returns></returns>
+        public async virtual Task<List<ComponentExport>> GetWareReturnJdComp(long jdOrderId, long skuId)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETWARERETURNJDCOMP_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("jdOrderId", jdOrderId.ToString());
+                dic.Add("skuId", skuId.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<List<ComponentExport>>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.6 根据客户账号和订单号分页查询服务单概要信息
+        /// </summary>
+        /// <param name="jdOrderId">订单号</param>
+        /// <param name="pageSize">每页记录数</param>
+        /// <param name="pageIndex">页码 1代表第一页</param>
+        /// <returns></returns>
+        public async virtual Task<AfsServicebyCustomerPinPage> GetServiceListPage(long jdOrderId, int pageSize,int pageIndex)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETWARERETURNJDCOMP_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("jdOrderId", jdOrderId.ToString());
+                dic.Add("pageSize", pageSize.ToString());
+                dic.Add("pageIndex", pageIndex.ToString());
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<AfsServicebyCustomerPinPage>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.7 根据服务单号查询服务单明细信息
+        /// </summary>
+        /// <param name="afsServiceId">服务单号 需要调用10.6 查询得到服务单号</param>
+        /// <param name="appendInfoSteps"></param>
+        /// <returns></returns>
+        public async virtual Task<CompatibleServiceDetailDto> GetServiceDetailInfo(long afsServiceId, List<int> appendInfoSteps)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.GETSERVICEDETAILINFO_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("afsServiceId", afsServiceId.ToString());
+                dic.Add("appendInfoSteps", StringHelper.ToJson(appendInfoSteps));
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return null;
+                }
+                var result = ConvertJsonToResult<CompatibleServiceDetailDto>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        /// <summary>
+        /// 10.8 取消服务单/客户放弃
+        /// </summary>
+        /// <param name="serviceIdList">服务单号集合param>
+        /// <param name="approveNotes">审核意见</param>
+        /// <returns></returns>
+        public async virtual Task<bool> AuditCancel(List<int> serviceIdList, string approveNotes)
+        {
+            try
+            {
+                var url = Path.Combine(ConstHelper.BASEURL, ConstHelper.AUDITCANCEL_URI);
+                IDictionary<string, string> dic = new SortedDictionary<string, string>();
+                dic.Add("serviceIdList", StringHelper.ToJson(serviceIdList));
+                dic.Add("approveNotes", approveNotes);
+                var x = await HttpHelper.HttpClientPost(url, dic);
+                if (string.IsNullOrWhiteSpace(x))
+                {
+                    return false;
+                }
+                var result = ConvertJsonToResult<bool>(x);
+                return result;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
+        #region 公共方法，可以override
         public virtual BaseResult<T> ConvertJsonToBaseResult<T>(string jsonStr)
         {
             var result = StringHelper.JsonToObj<BaseResult<T>>(jsonStr)
@@ -411,5 +1602,7 @@ namespace JD.SDK
             }
             return default(T);
         }
+
+        #endregion
     }
 }

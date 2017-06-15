@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace JD.SDK
 {
-    public class GetCommentSummarysResult
+    public class CommentSummarysResult
     {
         /// <summary>
         /// 商品评分 (5颗星，4颗星)
